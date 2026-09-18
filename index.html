@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Red-Black Tree Insertion Simulator</title>
+<style>
+:root{--bg:#f7f7f5;--fg:#1d1d1b;--mut:#6b6b66;--line:#c9c9c2;--card:#fff;--red:#c0392b;--blk:#1d1d1b}
+:root:not([data-theme="light"]){@media (prefers-color-scheme:dark){--bg:#17171a;--fg:#ececea;--mut:#a0a09a;--line:#3a3a40;--card:#212126;--red:#e05a4a;--blk:#0b0b0d}}
+:root[data-theme="dark"]{--bg:#17171a;--fg:#ececea;--mut:#a0a09a;--line:#3a3a40;--card:#212126;--red:#e05a4a;--blk:#0b0b0d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial,sans-serif;padding:20px}
+.wrap{max-width:900px;margin:0 auto}h1{font-size:1.35rem;margin:0 0 4px}h2{font-size:1.05rem;margin:28px 0 8px}
+p.sub{color:var(--mut);margin:0 0 16px;font-size:.9rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+button,input{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:7px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--fg)}input{width:90px;cursor:text}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+#msg{font-size:.92rem;min-height:2.6em;border-left:3px solid var(--line);padding-left:10px}
+#cnt{color:var(--mut);font-size:.85rem}
+.scroll{overflow-x:auto}svg{display:block;min-width:320px;max-width:100%}
+pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font-size:.82rem;line-height:1.35}
+table{border-collapse:collapse;width:100%;font-size:.88rem}td,th{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+code{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:.88em}
+</style></head><body><div class="wrap">
+<h1>Red-Black Tree Insertion Simulator</h1>
+<p class="sub">CLRS RB-INSERT with RB-INSERT-FIXUP, stepped one operation at a time. Red = red node, filled dark = black node, small squares = T.nil (black).</p>
+
+<div class="card">
+  <div class="row">
+    <input id="key" type="number" placeholder="key" />
+    <button onclick="doInsert()">Insert</button>
+    <button onclick="loadSeq()">Load CLRS sequence 41,38,31,12,19,8</button>
+    <button onclick="reset()">Reset</button>
+  </div>
+  <div class="row">
+    <button onclick="go(-1)">◀ Prev</button><button onclick="go(1)">Next ▶</button>
+    <button onclick="play()">▶ Play all</button><span id="cnt"></span>
+  </div>
+  <div id="msg"></div>
+  <div class="scroll"><svg id="svg" viewBox="0 0 800 340"></svg></div>
+</div>
+
+<script>
+let root=null,steps=[],si=0,timer=null;
+const R='R',B='B';
+function cl(n){if(!n)return null;const c={key:n.key,color:n.color};c.left=cl(n.left);c.right=cl(n.right);return c;}
+function snap(msg,z){steps.push({t:cl(root),msg:msg,z:z});}
+function lrot(x){const y=x.right;x.right=y.left;if(y.left)y.left.parent=x;y.parent=x.parent;
+ if(!x.parent)root=y;else if(x===x.parent.left)x.parent.left=y;else x.parent.right=y;y.left=x;x.parent=y;}
+function rrot(x){const y=x.left;x.left=y.right;if(y.right)y.right.parent=x;y.parent=x.parent;
+ if(!x.parent)root=y;else if(x===x.parent.right)x.parent.right=y;else x.parent.left=y;y.right=x;x.parent=y;}
+function ins(k){let y=null,x=root;
+ while(x){y=x;x=k<x.key?x.left:x.right;}
+ let z={key:k,color:R,left:null,right:null,parent:y};
+ if(!y)root=z;else if(k<y.key)y.left=z;else y.right=z;
+ snap('BST-insert '+k+' as a RED leaf.',k);
+ while(z.parent&&z.parent.color===R){
+  const p=z.parent,g=p.parent;
+  if(p===g.left){const u=g.right;
+   if(u&&u.color===R){p.color=B;u.color=B;g.color=R;z=g;
+    snap('Case 1 (uncle '+u.key+' is RED): recolour parent '+p.key+' and uncle black, grandparent '+g.key+' red; z moves up to '+g.key+'.',z.key);}
+   else{if(z===p.right){z=p;lrot(z);snap('Case 2 (uncle black, z is a RIGHT child): LEFT-ROTATE at '+z.key+' → now Case 3.',z.key);}
+    const p2=z.parent,g2=p2.parent;p2.color=B;g2.color=R;rrot(g2);
+    snap('Case 3: recolour '+p2.key+' black and '+g2.key+' red, then RIGHT-ROTATE at '+g2.key+'.',z.key);}
+  }else{const u=g.left;
+   if(u&&u.color===R){p.color=B;u.color=B;g.color=R;z=g;
+    snap('Case 1 (mirror, uncle '+u.key+' is RED): recolour parent '+p.key+' and uncle black, grandparent '+g.key+' red; z moves up to '+g.key+'.',z.key);}
+   else{if(z===p.left){z=p;rrot(z);snap('Case 2 (mirror): RIGHT-ROTATE at '+z.key+' → now Case 3.',z.key);}
+    const p2=z.parent,g2=p2.parent;p2.color=B;g2.color=R;lrot(g2);
+    snap('Case 3 (mirror): recolour '+p2.key+' black, '+g2.key+' red, LEFT-ROTATE at '+g2.key+'.',z.key);}
+  }}
+ if(root.color!==B){root.color=B;snap('Property 2: colour the root '+root.key+' black.',root.key);}
+ else snap('No further violation — insertion of '+k+' complete.',k);
+}
+function pos(n,d,st){if(!n){st.x++;return;}pos(n.left,d+1,st);n._x=st.x++;n._y=d;pos(n.right,d+1,st);}
+function draw(s){const svg=document.getElementById('svg');
+ if(!s||!s.t){svg.innerHTML='<text x="20" y="40" fill="currentColor" font-size="14">Empty tree</text>';return;}
+ const st={x:0};pos(s.t,0,st);const n=Math.max(st.x,1);const W=800,gx=W/(n+1);let out='',maxd=0;
+ (function walk(nd,px,py){if(!nd)return;maxd=Math.max(maxd,nd._y);
+  const X=(nd._x+1)*gx,Y=40+nd._y*66;
+  if(px!==null)out+='<line x1="'+px+'" y1="'+py+'" x2="'+X+'" y2="'+Y+'" stroke="var(--line)" stroke-width="2"/>';
+  ['left','right'].forEach(function(k){if(nd[k])walk(nd[k],X,Y);else{
+    const sx=X+(k==='left'?-gx*0.45:gx*0.45),sy=Y+44;
+    out+='<line x1="'+X+'" y1="'+Y+'" x2="'+sx+'" y2="'+sy+'" stroke="var(--line)" stroke-width="1"/>'+
+    '<rect x="'+(sx-7)+'" y="'+(sy-7)+'" width="14" height="14" fill="var(--blk)" stroke="var(--line)"/>';}});
+  const f=nd.color==='R'?'var(--red)':'var(--blk)';
+  out+='<circle cx="'+X+'" cy="'+Y+'" r="20" fill="'+f+'" stroke="'+(nd.key===s.z?'#f0a500':'var(--line)')+'" stroke-width="'+(nd.key===s.z?4:2)+'"/>'+
+   '<text x="'+X+'" y="'+(Y+5)+'" text-anchor="middle" fill="#fff" font-size="14" font-weight="600">'+nd.key+'</text>';
+ })(s.t,null,null);
+ svg.setAttribute('viewBox','0 0 '+W+' '+(110+maxd*66));svg.innerHTML=out;}
+function show(){const s=steps[si];document.getElementById('msg').textContent=s?s.msg:'Insert a key to begin.';
+ document.getElementById('cnt').textContent=steps.length?('step '+(si+1)+' of '+steps.length):'';draw(s);}
+function go(d){si=Math.max(0,Math.min(steps.length-1,si+d));show();}
+function play(){clearInterval(timer);si=0;show();timer=setInterval(function(){if(si>=steps.length-1){clearInterval(timer);return;}si++;show();},1100);}
+function doInsert(){const v=parseInt(document.getElementById('key').value,10);if(isNaN(v))return;
+ ins(v);document.getElementById('key').value='';si=steps.length-1;show();}
+function reset(){clearInterval(timer);root=null;steps=[];si=0;show();}
+function loadSeq(){reset();[41,38,31,12,19,8].forEach(ins);si=0;show();}
+loadSeq();
+</script>
+</div></body></html>
