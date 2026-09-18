@@ -45,5 +45,4 @@ This simulation helps understand:
 ##  Technologies Used
 
 - HTML
-- CSS
-- JavaScript
+
